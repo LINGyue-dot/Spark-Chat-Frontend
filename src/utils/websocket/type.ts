@@ -10,7 +10,7 @@ export enum MessageType {
 }
 
 export interface UserProp {
-  id?: string | number;
+  id?: string;
   username?: string;
 }
 
@@ -19,3 +19,10 @@ export interface MessageProp extends UserProp {
   message?: string | null;
 }
 
+
+
+export interface WSOptionsProp {
+  onopen?: () => void;
+  onmessage: (data: MessageProp) => void;
+  onerror?: (e: Error) => void;
+}

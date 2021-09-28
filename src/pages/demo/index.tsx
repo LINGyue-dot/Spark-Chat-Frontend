@@ -1,104 +1,58 @@
-import React, { ChangeEvent, useState } from 'react';
+import React, { ChangeEvent, useEffect, useState } from 'react';
 
 import { Button, Input } from 'antd';
-import { MessageProp, MessageType } from './type';
 import styled from 'styled-components';
-
-// 发送
-const send = (ws?: WebSocket, data?: MessageProp) => {
-  if (!ws || !data) {
-    return;
-  }
-  ws.send(Buffer.from(JSON.stringify(data)));
-};
+import { MessageProp, MessageType } from '../../utils/websocket/type';
+import { selectWebsocket } from '../../store/ws/wsSlice';
+import { useAppSelector } from '../../store/hook';
 
 const Demo = () => {
-  const [webSocket, setWebSocket] = useState<WebSocket | undefined>();
-
   // !!! 封装成 hook
   const [noticeArr, setNoticeArr] = useState<MessageProp[]>([]);
 
-  // 添加 notice 为什么不行
-  const addNotice = (data: MessageProp) => {
-    console.log('23--------');
-    console.log(noticeArr);
-    const beforeMessage = JSON.parse(JSON.stringify(noticeArr));
-    beforeMessage.push(data);
-    console.log('beforeMessage: ', beforeMessage);
-    setNoticeArr(beforeMessage);
-  };
+  const ws = useAppSelector(selectWebsocket);
 
-  const initWebSocket = () => {
-    if (webSocket) {
+  // onmessage
+  // !!! todo show different message depend on message.type and message.userid
+  const onmessage = (data: MessageProp) => {
+    if (data.type === MessageType.SYSTEM && data.id === ws?.getUserid()) {
       return;
     }
-    const temp = new WebSocket('ws://localhost:7000');
-    setWebSocket(temp);
-    temp.onopen = function () {
-      addNotice({
-        type: MessageType.INIT,
-        message: 'WebSocket init successfully',
-      });
-      // // 消息 arr
-      // setNoticeArr((old) => [
-      //   ...old,
-      //   {
-      //     type: MessageType.INIT,
-      //     message: 'WebSocket init successfully',
-      //   },
-      // ]);
-    };
-    temp.onmessage = function (evt: MessageEvent<WebSocket>) {
-      console.log('----------');
-      console.log(noticeArr);
-      // addNotice(JSON.parse(evt.data as unknown as string));
-      // setNoticeArr((old) => [
-      //   ...old,
-      //   JSON.parse(evt.data as unknown as string),
-      // ]);
-    };
+    setNoticeArr((old) => [...old, data]);
   };
 
-  const hanleConnect = () => {
-    initWebSocket();
+  const configWS = () => {
+    ws?.configOptions({ onmessage: onmessage });
   };
 
-  const hanleSend = () => {
-    const tempData: MessageProp = {
-      id: 1,
-      type: MessageType.USER,
-      message: value,
-    };
-    send(webSocket, tempData);
-  };
+  useEffect(() => {
+    configWS();
+  }, []);
 
   const [value, setValue] = useState<string | null>(null);
   const inputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
   };
 
+  // send message
+  const hanleSend = () => {
+    ws?.send(value || '');
+  };
+
   return (
     <>
       <ConnectDiv>
-        <Button type="primary" onClick={hanleConnect}>
-          链接
-        </Button>
         <Input onChange={inputChange} />
         <Button type="primary" onClick={hanleSend}>
           发送
         </Button>
       </ConnectDiv>
 
-      <Button
-        onClick={() => {
-          console.log(noticeArr);
-        }}
-      >
-        show
-      </Button>
       <NoticeDiv>
         {noticeArr.map((item, i) => (
-          <p key={i}>{item.type + ' : ' + item.message}</p>
+          <p key={i}>
+            {item.type + ' : ' + item.username + ':' + item.message}
+          </p>
         ))}
       </NoticeDiv>
     </>
